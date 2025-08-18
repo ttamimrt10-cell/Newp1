@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Monetag Mini App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 420px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .user-info {
+      text-align: center;
+      background: #1c1c1c;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 12px rgba(0, 255, 123, 0.3);
+    }
+
+    .user-info img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 2px solid #00ff90;
+      margin-bottom: 10px;
+    }
+
+    .user-info h2 {
+      margin: 5px 0;
+      font-size: 22px;
+      color: #00ff90;
+    }
+
+    .user-info p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    .btn {
+      background: #00ff90;
+      border: none;
+      color: #000;
+      padding: 10px 20px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
+      background: #00cc72;
+    }
+
+    #timer {
+      font-weight: bold;
+      margin-top: 10px;
+      color: #f9c74f;
+    }
+
+    #timer span {
+      display: block;
+      margin-top: 8px;
+      font-size: 15px;
+    }
+
+    #withdraw-status {
+      margin-top: 15px;
+      background: #222;
+      border: 1px solid #00ff90;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+      color: #00ff90;
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      user-select: text;
+    }
+
+    .btn-admin {
+      position: fixed;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      color: #111;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      text-decoration: none;
+      box-shadow: 0 2px 6px rgba(0, 255, 144, 0.5);
+    }
+
+    #withdraw-popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .popup-content {
+      background: #121212;
+      padding: 25px 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 0 15px #00ff90aa;
+      color: #eee;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .popup-content h3 {
+      color: #00ff90;
+      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .popup-content label {
+      display: block;
+      margin: 15px 0 6px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #00ff90cc;
+      letter-spacing: 0.03em;
+    }
+
+    .popup-content input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 2px solid #333;
+      background: #222;
+      color: #fff;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+
+    .popup-content input:focus {
+      border-color: #00ff90;
+      outline: none;
+      box-shadow: 0 0 8px #00ff90bb;
+    }
+
+    .btn-submit {
+      background: #00ff90;
+      color: #000;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-submit:hover {
+      background: #00cc72;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      color: #777;
+      border: none;
+      padding: 10px;
+      margin-top: 14px;
+      display: block;
+      width: 100%;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: center;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      user-select: none;
+      transition: color 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+      color: #00ff90;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="user-info">
+      <img id="user-photo" src="" alt="User Photo" />
+      <h2 id="user-name">Loading...</h2>
+      <p id="user-username"></p>
+      <p id="points">Points: 0.00 BDT</p>
+      <p id="ads-count">Ads Watched: 0/500</p>
+      <button class="btn" id="watch-ad-btn">🎥 Watch Ad</button>
+      <div id="timer"></div>
+      <button class="btn" id="withdraw-btn">💸 Withdraw</button>
+      <div id="withdraw-status"></div>
+    </div>
+  </div>
+
+  <a class="btn-admin" href="https://t.me/Fahim959" target="_blank">ADMIN CONTACT</a>
+
+  <div id="withdraw-popup">
+    <div class="popup-content">
+      <h3>Withdraw Request</h3>
+      <label for="bkashNumber">Bkash Number</label>
+      <input type="tel" id="bkashNumber" placeholder="e.g. 017XXXXXXXX" />
+      <label for="withdrawAmount">Amount (BDT)</label>
+      <input type="number" id="withdrawAmount" placeholder="Minimum 50 BDT" min="50" />
+      <button class="btn-submit" id="submit-withdraw">Submit</button>
+      <button class="btn-cancel" id="cancel-withdraw">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+
+    const firebaseConfig = {
+      databaseURL: "https://monetag-5cc96-defaulfirebaseio.com/",
+      appId: "1:420051267355:android:02c24116274bbf6dbe"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const user = tg.initDataUnsafe.user || {};
+    const userId = `tg_${user.id || "unknown"}`;
+
+    const nameEl = document.getElementById("user-name");
+    const usernameEl = document.getElementById("user-username");
+    const photoEl = document.getElementById("user-photo");
+    const pointsEl = document.getElementById("points");
+    const adsCountEl = document.getElementById("ads-count");
+    const watchAdBtn = document.getElementById("watch-ad-btn");
+    const withdrawBtn = document.getElementById("withdraw-btn");
+    const timerEl = document.getElementById("timer");
+    const withdrawStatusEl = document.getElementById("withdraw-status");
+    const popup = document.getElementById("withdraw-popup");
+    const bkashInput = document.getElementById("bkashNumber");
+    const amountInput = document.getElementById("withdrawAmount");
+    const submitWithdrawBtn = document.getElementById("submit-withdraw");
+    const cancelWithdrawBtn = document.getElementById("cancel-withdraw");
+
+    let userData = {
+      name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || "No Name",
+      username: user.username || "",
+      photo: user.username ? `https://t.me/i/userpic/320/${user.username}.jpg` : "",
+      points: 0,
+      adsWatched: 0
+    };
+
+    function updateUI() {
+      nameEl.textContent = userData.name;
+      usernameEl.textContent = userData.username ? `@${userData.username}` : "";
+      photoEl.src = userData.photo || "https://via.placeholder.com/80";
+      pointsEl.textContent = `Points: ${userData.points.toFixed(2)} BDT`;
+      adsCountEl.textContent = `Ads Watched: ${userData.adsWatched}/500`;
+    }
+
+    function loadUserData() {
+      db.ref(`users/${userId}`).get().then(snapshot => {
+        if (snapshot.exists()) {
+          userData = snapshot.val();
+        } else {
+          db.ref(`users/${userId}`).set(userData);
+        }
+        updateUI();
+      });
+    }
+
+    function formatWithdrawStatus(req) {
+      const statusColors = {
+        pending: "#f9c74f",
+        approved: "#00ff90",
+        rejected: "#ff4c4c"
+      };
+      const color = statusColors[req.status] || "#ccc";
+      return `
+Amount: ${req.amount.toFixed(2)} BDT
+Bkash Number: ${req.bkashNumber}
+Status: %c${req.status.toUpperCase()}%c
+Requested At: ${new Date(req.timestamp).toLocaleString()}
+`.trim();
+    }
+
+    // Show last withdraw details on home screen
+    function listenWithdrawStatus() {
+      db.ref('withdrawRequests').orderByChild('userId').equalTo(userId).on('value', snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          withdrawStatusEl.textContent = "No withdraw requests yet.";
+          withdrawStatusEl.style.color = "#aaa";
+          return;
+        }
+        // Sort by timestamp descending
+        const requests = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+        if (requests.length === 0) {
+          withdrawStatusEl.textContent = "No withdraw requests yet.";
+          withdrawStatusEl.style.color = "#aaa";
+          return;
+        }
+
+        const latest = requests[0];
+        // Format text with color for status
+        // Since innerHTML with style in text isn't straightforward, do manual colored spans:
+
+        const statusColors = {
+          pending: "#f9c74f",
+          approved: "#00ff90",
+          rejected: "#ff4c4c"
+        };
+
+        const statusColor = statusColors[latest.status] || "#ccc";
+
+        withdrawStatusEl.innerHTML =
+          `<b>Last Withdraw Request</b><br>` +
+          `Amount: ${latest.amount.toFixed(2)} BDT<br>` +
+          `Bkash Number: ${latest.bkashNumber}<br>` +
+          `Status: <span style="color:${statusColor}; font-weight:700;">${latest.status.toUpperCase()}</span><br>` +
+          `Requested At: ${new Date(latest.timestamp).toLocaleString()}`;
+      });
+    }
+
+    let timerDone = false;
+    let adDone = false;
+    let rewardGiven = false;
+
+    function startTimer() {
+      let time = 15;
+      timerDone = false;
+      timerEl.innerHTML = `⏳ Wait ${time} seconds...`;
+      const intv = setInterval(() => {
+        time--;
+        timerEl.innerHTML = `⏳ Wait ${time} seconds...`;
+        if (time <= 0) {
+          clearInterval(intv);
+          timerDone = true;
+          checkReward();
+        }
+      }, 1000);
+    }
+
+    function checkReward() {
+      if (timerDone && adDone && !rewardGiven) {
+        rewardGiven = true;
+        if (userData.adsWatched < 500) {
+          userData.points += 0.15;
+          userData.adsWatched++;
+          db.ref(`users/${userId}`).set(userData).then(updateUI);
+          timerEl.innerHTML = `<span style="color: #00ff90;">🎉 +0.15 BDT rewarded!</span>`;
+        } else {
+          timerEl.innerHTML = `<span style="color: #f94144;">Daily ad limit reached.</span>`;
+        }
+        watchAdBtn.disabled = false;
+      }
+    }
+
+    withdrawBtn.onclick = () => {
+      popup.style.display = "flex";
+      // Reset inputs on open
+      bkashInput.value = "";
+      amountInput.value = "";
+    };
+    cancelWithdrawBtn.onclick = () => popup.style.display = "none";
+
+    submitWithdrawBtn.onclick = () => {
+      const bkash = bkashInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      if (!bkash || amount < 50 || userData.points < amount) {
+        alert("Invalid input or insufficient balance.");
+        return;
+      }
+      const req = {
+        userId,
+        bkashNumber: bkash,
+        amount,
+        status: "pending",
+        timestamp: Date.now(),
+        name: userData.name,
+        username: userData.username
+      };
+      db.ref("withdrawRequests").push(req).then(() => {
+        userData.points -= amount;
+        db.ref(`users/${userId}`).set(userData).then(() => {
+          updateUI();
+          alert("Withdraw request submitted!");
+          popup.style.display = "none";
+        });
+      });
+    };
+
+    function loadMonetagAd(zoneId) {
+      const s = document.createElement("script");
+      s.src = "//libtl.com/sdk.js";
+      s.dataset.zone = zoneId;
+      s.dataset.sdk = `show_${zoneId}`;
+      s.onload = () => {
+        watchAdBtn.onclick = () => {
+          if (userData.adsWatched >= 500) return alert("Limit reached.");
+          watchAdBtn.disabled = true;
+          rewardGiven = false;
+          adDone = false;
+          timerDone = false;
+          startTimer();
+          window[`show_${zoneId}`]().then(() => {
+            adDone = true;
+            checkReward();
+          }).catch(() => {
+            alert("Ad error or not completed.");
+            adDone = false;
+            timerDone = false;
+            rewardGiven = false;
+            timerEl.textContent = "";
+            watchAdBtn.disabled = false;
+          });
+        };
+      };
+      document.head.appendChild(s);
+    }
+
+    db.ref("config/monetagZoneId").get().then(snapshot => {
+      if (snapshot.exists()) {
+        loadMonetagAd(snapshot.val());
+      } else {
+        alert("Ad zone ID not configured.");
+      }
+    });
+
+    loadUserData();
+    listenWithdrawStatus();
+  </script>
+</body>
+</html>
